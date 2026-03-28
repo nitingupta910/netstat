@@ -1,0 +1,10 @@
+[package]
+name = "netstat"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ratatui = "0.30.0"
+crossterm = "0.29.0"
+procfs = "0.18.0"
+color-eyre = "0.6.5"
