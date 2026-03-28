@@ -89,7 +89,8 @@ impl App {
                 }
             }
             Tab::Connections => {
-                self.conn_scroll = self.conn_scroll.saturating_add(1);
+                let max = self.conn_count().saturating_sub(1);
+                self.conn_scroll = self.conn_scroll.saturating_add(1).min(max);
             }
             Tab::Bandwidth => {
                 if !self.data.interfaces.is_empty() {
@@ -117,6 +118,14 @@ impl App {
                     };
                 }
             }
+        }
+    }
+
+    fn conn_count(&self) -> usize {
+        match self.conn_filter {
+            ConnFilter::All => self.data.tcp_conns.len() + self.data.udp_sockets.len(),
+            ConnFilter::Tcp => self.data.tcp_conns.len(),
+            ConnFilter::Udp => self.data.udp_sockets.len(),
         }
     }
 

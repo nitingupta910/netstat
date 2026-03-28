@@ -19,6 +19,14 @@ const TICK_RATE: Duration = Duration::from_secs(1);
 fn main() -> Result<()> {
     color_eyre::install()?;
 
+    // Ensure terminal is restored even on panic.
+    let original_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = terminal::disable_raw_mode();
+        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+        original_hook(info);
+    }));
+
     // Setup terminal.
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -44,22 +52,21 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
         terminal.draw(|frame| ui::draw(frame, &app))?;
 
         let timeout = TICK_RATE.saturating_sub(last_tick.elapsed());
-        if event::poll(timeout)? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => app.running = false,
-                        KeyCode::Tab | KeyCode::Right => app.next_tab(),
-                        KeyCode::BackTab | KeyCode::Left => app.prev_tab(),
-                        KeyCode::Char('1') => app.tab = app::Tab::Interfaces,
-                        KeyCode::Char('2') => app.tab = app::Tab::Connections,
-                        KeyCode::Char('3') => app.tab = app::Tab::Bandwidth,
-                        KeyCode::Down | KeyCode::Char('j') => app.scroll_down(),
-                        KeyCode::Up | KeyCode::Char('k') => app.scroll_up(),
-                        KeyCode::Char('f') => app.cycle_conn_filter(),
-                        _ => {}
-                    }
-                }
+        if event::poll(timeout)?
+            && let Event::Key(key) = event::read()?
+            && key.kind == KeyEventKind::Press
+        {
+            match key.code {
+                KeyCode::Char('q') | KeyCode::Esc => app.running = false,
+                KeyCode::Tab | KeyCode::Right => app.next_tab(),
+                KeyCode::BackTab | KeyCode::Left => app.prev_tab(),
+                KeyCode::Char('1') => app.tab = app::Tab::Interfaces,
+                KeyCode::Char('2') => app.tab = app::Tab::Connections,
+                KeyCode::Char('3') => app.tab = app::Tab::Bandwidth,
+                KeyCode::Down | KeyCode::Char('j') => app.scroll_down(),
+                KeyCode::Up | KeyCode::Char('k') => app.scroll_up(),
+                KeyCode::Char('f') => app.cycle_conn_filter(),
+                _ => {}
             }
         }
 

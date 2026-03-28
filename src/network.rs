@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 
 use procfs::net::{TcpNetEntry, TcpState, UdpNetEntry};
@@ -53,13 +53,13 @@ pub struct NetworkData {
     pub tcp_state_counts: HashMap<String, usize>,
     pub total_rx_bps: f64,
     pub total_tx_bps: f64,
-    pub bandwidth_history: HashMap<String, Vec<(f64, f64)>>,
+    pub bandwidth_history: HashMap<String, VecDeque<(f64, f64)>>,
 }
 
 pub struct NetworkCollector {
     prev_stats: Option<Vec<IfaceStats>>,
     prev_time: Option<Instant>,
-    bandwidth_history: HashMap<String, Vec<(f64, f64)>>,
+    bandwidth_history: HashMap<String, VecDeque<(f64, f64)>>,
 }
 
 const MAX_HISTORY: usize = 60;
@@ -70,6 +70,7 @@ impl NetworkCollector {
             prev_stats: None,
             prev_time: None,
             bandwidth_history: HashMap::new(),
+
         }
     }
 
@@ -92,9 +93,9 @@ impl NetworkCollector {
                 .bandwidth_history
                 .entry(iface.name.clone())
                 .or_default();
-            history.push((rate.rx_bps, rate.tx_bps));
+            history.push_back((rate.rx_bps, rate.tx_bps));
             if history.len() > MAX_HISTORY {
-                history.remove(0);
+                history.pop_front();
             }
         }
 
@@ -185,28 +186,17 @@ impl NetworkCollector {
     fn format_addr(entry_addr: &std::net::SocketAddr) -> String {
         let ip = entry_addr.ip();
         let port = entry_addr.port();
+        let port_str = if port == 0 { "*".to_string() } else { port.to_string() };
 
-        let ip_str = match ip {
+        match ip {
             std::net::IpAddr::V4(v4) => {
-                if v4.is_unspecified() {
-                    "*".to_string()
-                } else {
-                    v4.to_string()
-                }
+                let host = if v4.is_unspecified() { "*".to_string() } else { v4.to_string() };
+                format!("{host}:{port_str}")
             }
             std::net::IpAddr::V6(v6) => {
-                if v6.is_unspecified() {
-                    "*".to_string()
-                } else {
-                    v6.to_string()
-                }
+                let host = if v6.is_unspecified() { "*".to_string() } else { v6.to_string() };
+                format!("[{host}]:{port_str}")
             }
-        };
-
-        if port == 0 {
-            format!("{ip_str}:*")
-        } else {
-            format!("{ip_str}:{port}")
         }
     }
 
