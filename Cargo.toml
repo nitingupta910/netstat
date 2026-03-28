@@ -1,9 +1,16 @@
 [package]
-name = "netstat"
+name = "netstat-tui"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
 description = "A TUI network statistics viewer"
+repository = "https://github.com/nitingupta910/netstat"
+keywords = ["network", "tui", "netstat", "ratatui"]
+categories = ["command-line-utilities", "network-programming"]
+
+[[bin]]
+name = "netstat"
+path = "src/main.rs"
 
 [dependencies]
 ratatui = "0.30.0"
